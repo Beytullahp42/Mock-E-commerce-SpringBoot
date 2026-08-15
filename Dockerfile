@@ -1,14 +1,21 @@
-# Use Amazon Corretto 21 as the base image
-FROM amazoncorretto:21
+FROM amazoncorretto:21-alpine AS builder
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy only the fat jar (exclude the plain jar)
-COPY build/libs/E-Commerce-0.0.1-SNAPSHOT.jar app.jar
+COPY gradlew settings.gradle build.gradle gradle.properties ./
+COPY gradle ./gradle
+RUN chmod +x gradlew
 
-# Expose the app port
+COPY src ./src
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew bootJar --no-daemon
+
+FROM amazoncorretto:21-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/build/libs/E-Commerce-0.0.1-SNAPSHOT.jar app.jar
+
 EXPOSE 8080
 
-# Run the jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
