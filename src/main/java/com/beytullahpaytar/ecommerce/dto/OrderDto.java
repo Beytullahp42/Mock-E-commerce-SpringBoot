@@ -7,8 +7,6 @@ public record OrderDto(
         String name,
         @NotBlank(message = "Surname is required")
         String surname,
-        @NotBlank(message = "Email is required")
-        String email,
         @NotBlank(message = "Phone number is required")
         String phoneNumber,
         @NotBlank(message = "Address is required")

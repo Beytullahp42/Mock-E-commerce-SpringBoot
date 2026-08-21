@@ -1,5 +1,6 @@
 package com.beytullahpaytar.ecommerce.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,6 +24,14 @@ public class Cart {
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> cartItems = new ArrayList<>();
 
-    @Column(nullable = false)
-    private Boolean isCompleted = false;
+    // Retained only so v2 can start against a school-version database volume.
+    // Cart ownership now replaces the old completed-cart workflow.
+    @Column(name = "is_completed", nullable = false)
+    @JsonIgnore
+    private Boolean legacyCompleted = false;
+
+    @OneToOne
+    @JoinColumn(name = "account_id", unique = true)
+    @JsonIgnore
+    private Account account;
 }

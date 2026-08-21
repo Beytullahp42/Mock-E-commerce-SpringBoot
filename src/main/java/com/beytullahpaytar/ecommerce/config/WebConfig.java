@@ -10,6 +10,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Paths;
+
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer{
@@ -26,16 +28,20 @@ public class WebConfig implements WebMvcConfigurer{
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                         .allowedOrigins(allowedOrigins)
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
-                        .allowCredentials(true);
+                        .allowCredentials(false);
             }
         };
     }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String uploadDirPath = "file:" + storageProperties.getLocation() + "\\";
+        String uploadDirPath = Paths.get(storageProperties.getLocation())
+                .toAbsolutePath()
+                .normalize()
+                .toUri()
+                .toString();
 
         registry.addResourceHandler("/upload-dir/**")
                 .addResourceLocations(uploadDirPath);

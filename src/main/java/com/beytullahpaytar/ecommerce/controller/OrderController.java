@@ -1,50 +1,38 @@
 package com.beytullahpaytar.ecommerce.controller;
 
+import com.beytullahpaytar.ecommerce.auth.AccountDetails;
 import com.beytullahpaytar.ecommerce.dto.OrderDto;
-import com.beytullahpaytar.ecommerce.dto.UpdateOrderStatusDto;
 import com.beytullahpaytar.ecommerce.models.Order;
 import com.beytullahpaytar.ecommerce.services.OrderService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/order")
+@RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService orderService;
 
-    @Autowired
     public OrderController(OrderService orderService) {
         this.orderService = orderService;
     }
 
     @PostMapping
-    public String createOrder(@Valid @RequestBody OrderDto orderDto) {
-        orderService.createOrder(orderDto);
-        return "Order created successfully";
+    public ResponseEntity<Order> createOrder(@AuthenticationPrincipal AccountDetails account,
+                                             @Valid @RequestBody OrderDto orderDto) {
+        return ResponseEntity.ok(orderService.createOrder(account, orderDto));
     }
 
     @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
+    public ResponseEntity<List<Order>> getOrders(@AuthenticationPrincipal AccountDetails account) {
+        return ResponseEntity.ok(orderService.getOrders(account));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
-        Order order = orderService.getOrderById(id);
-        if (order != null) {
-            return ResponseEntity.ok(order);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @PutMapping("/{id}/status")
-    public ResponseEntity<String> updateOrderStatus(@PathVariable Long id, @Valid @RequestBody UpdateOrderStatusDto dto) {
-        orderService.updateOrderStatus(id, dto.orderStatus());
-        return ResponseEntity.ok("Order status updated successfully");
+    public ResponseEntity<Order> getOrder(@AuthenticationPrincipal AccountDetails account, @PathVariable Long id) {
+        return ResponseEntity.ok(orderService.getOrder(account, id));
     }
 }

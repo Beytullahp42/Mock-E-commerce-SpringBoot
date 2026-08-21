@@ -48,7 +48,7 @@ public class FileUploadController {
                 "attachment; filename=\"" + file.getFilename() + "\"").body(file);
     }
 
-    @PostMapping("/api/upload")
+    @PostMapping("/api/admin/uploads")
     public ResponseEntity<Map<String, String>> handleFileUpload(@RequestParam("file") MultipartFile file) {
 
         String filename = storageService.store(file);
@@ -61,10 +61,17 @@ public class FileUploadController {
         return ResponseEntity.notFound().build();
     }
 
-    @DeleteMapping("/api/upload/{filename:.+}")
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<Map<String, String>> handleStorageException(StorageException exception) {
+        return ResponseEntity.badRequest().body(Map.of("message", exception.getMessage()));
+    }
+
+    @DeleteMapping("/api/admin/uploads/{filename:.+}")
     public ResponseEntity<?> deleteUploadedFile(@PathVariable String filename) {
+        if (!filename.startsWith("tempFile")) {
+            return ResponseEntity.badRequest().body("Only unfinished temporary uploads can be removed directly");
+        }
         storageService.delete(filename);
-        System.out.println("File deleted: " + filename);
         return ResponseEntity.ok().build();
     }
 

@@ -1,76 +1,77 @@
 package com.beytullahpaytar.ecommerce.services;
 
+import com.beytullahpaytar.ecommerce.auth.AccountDetails;
 import com.beytullahpaytar.ecommerce.dto.CartItemDto;
-import com.beytullahpaytar.ecommerce.models.Cart;
-import com.beytullahpaytar.ecommerce.models.CartItem;
-import com.beytullahpaytar.ecommerce.models.Item;
-import com.beytullahpaytar.ecommerce.repository.CartItemRepository;
-import com.beytullahpaytar.ecommerce.repository.CartRepository;
+import com.beytullahpaytar.ecommerce.models.*;
+import com.beytullahpaytar.ecommerce.repository.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final ItemService itemService;
+    private final ItemRepository itemRepository;
+    private final AccountRepository accountRepository;
 
-    public CartService(CartRepository cartRepository, CartItemRepository cartItemRepository, ItemService itemService) {
+    public CartService(CartRepository cartRepository,
+                       CartItemRepository cartItemRepository,
+                       ItemRepository itemRepository,
+                       AccountRepository accountRepository) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
-        this.itemService = itemService;
+        this.itemRepository = itemRepository;
+        this.accountRepository = accountRepository;
     }
 
-    public Cart getCart(){
-        Cart cart = cartRepository.findFirstByIsCompletedFalse();
-        if (cart == null) {
-            cart = new Cart();
-            cartRepository.save(cart);
-        }
-        return cart;
+    @Transactional
+    public Cart getCart(AccountDetails accountDetails) {
+        return cartRepository.findByAccountId(accountDetails.getAccountId())
+                .orElseGet(() -> createCart(accountDetails.getAccountId()));
     }
 
-    public void addItemToCart(CartItemDto cartItemDto) {
-        Cart cart = getCart();
+    @Transactional
+    public void addItemToCart(AccountDetails accountDetails, CartItemDto cartItemDto) {
+        Cart cart = getCart(accountDetails);
+        Item item = itemRepository.findById(cartItemDto.itemId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found"));
 
-        // Check if the item already exists in the cart
-        CartItem cartItem = cartItemRepository.findByItemIdAndCartId(cartItemDto.itemId(), cart.getId());
-        if(cartItem != null) {
+        CartItem cartItem = cartItemRepository.findByItemIdAndCartId(item.getId(), cart.getId());
+        if (cartItem == null) {
+            cartItem = new CartItem();
+            cartItem.setItem(item);
+            cartItem.setCart(cart);
+            cartItem.setQuantity(cartItemDto.quantity());
+        } else {
             cartItem.setQuantity(cartItem.getQuantity() + cartItemDto.quantity());
-            cartItemRepository.save(cartItem);
-            return;
         }
-
-        cartItem = new CartItem();
-        Item item = itemService.getItem(cartItemDto.itemId());
-        cartItem.setItem(item);
-        cartItem.setQuantity(cartItemDto.quantity());
-        cartItem.setCart(cart);
         cartItemRepository.save(cartItem);
     }
 
-    public void removeItemFromCart(Long cartItemId) {
-        cartItemRepository.findById(cartItemId).ifPresent(cartItemRepository::delete);
+    @Transactional
+    public void removeItemFromCart(AccountDetails accountDetails, Long cartItemId) {
+        Cart cart = getCart(accountDetails);
+        CartItem cartItem = cartItemRepository.findByIdAndCartId(cartItemId, cart.getId());
+        if (cartItem == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart item not found");
+        }
+        cartItemRepository.delete(cartItem);
     }
 
-    public void clearCart() {
-        Cart cart = getCart();
+    @Transactional
+    public void clearCart(AccountDetails accountDetails) {
+        Cart cart = getCart(accountDetails);
         cart.getCartItems().clear();
         cartRepository.save(cart);
     }
 
-    public void completeCart() {
-        Cart cart = getCart();
-        cart.setIsCompleted(true);
-        cartRepository.save(cart);
+    private Cart createCart(Long accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found"));
+        Cart cart = new Cart();
+        cart.setAccount(account);
+        return cartRepository.save(cart);
     }
-
-    public Double getTotalPrice() {
-        Cart cart = getCart();
-        double totalPrice = 0.0;
-        for (CartItem cartItem : cart.getCartItems()) {
-            totalPrice += cartItem.getItem().getPrice() * cartItem.getQuantity();
-        }
-        return totalPrice;
-    }
-
 }

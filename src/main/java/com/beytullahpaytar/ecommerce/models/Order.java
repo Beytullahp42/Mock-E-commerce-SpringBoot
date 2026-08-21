@@ -1,7 +1,11 @@
 package com.beytullahpaytar.ecommerce.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
@@ -29,9 +33,13 @@ public class Order {
     @Column(nullable = false)
     private String email;
 
-    @OneToOne
-    @JoinColumn(name = "cart_id", referencedColumnName = "id")
-    private Cart cart;
+    @ManyToOne
+    @JoinColumn(name = "account_id")
+    @JsonIgnore
+    private Account account;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> orderItems = new ArrayList<>();
 
     @Column(nullable = false)
     private String orderStatus;
@@ -39,4 +47,3 @@ public class Order {
     @Column(nullable = false)
     private Double totalPrice = 0.0;
 }
-
